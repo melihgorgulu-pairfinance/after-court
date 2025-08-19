@@ -1,3 +1,4 @@
+from typing import Dict, List
 import boto3
 
 
@@ -20,9 +21,9 @@ class TextractClient:
             print(
                 f"Error submitting Textract job for document {document_key}: {str(e)}"
             )
-            raise
+            return None
 
-    def check_job_status(self, job_id):
+    def check_job_status(self, job_id) -> Dict:
         try:
             response = self.client.get_document_text_detection(JobId=job_id)
             status = response["JobStatus"]
@@ -37,7 +38,7 @@ class TextractClient:
             print(f"Error checking status for job {job_id}: {str(e)}")
             return {"status": "ERROR"}
 
-    def get_job_results(self, job_id):
+    def get_job_results(self, job_id) -> List:
         results = []
         pagination_token = None
         while True:
@@ -47,7 +48,7 @@ class TextractClient:
                 )
             else:
                 response = self.client.get_document_text_detection(JobId=job_id)
-
+            # Note: we could also get document metedata to get info like # of pages etc.
             results.extend(response["Blocks"])
 
             if "NextToken" in response:
