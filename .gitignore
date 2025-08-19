@@ -1,5 +1,6 @@
 # Custom Files and Folders
 data/
+cache/
 notebooks/
 .vscode
 .DS_Store
