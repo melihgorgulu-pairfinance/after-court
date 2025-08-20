@@ -277,79 +277,45 @@ def aws_textract_pipeline(object_keys: List[str], max_workers: int = 10, use_cac
     
     # Process uncached documents if any
     if uncached_keys:
-        _log.info("Starting AWS Textract Jobs with parallel processing (max_workers=%d)", max_workers)
-        
-        # Phase 1: Submit all jobs in parallel
-        _log.info("Phase 1: Submitting %d jobs in parallel...", len(uncached_keys))
-        job_infos = []
-        
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            # Submit all jobs
-            future_to_doc = {
-                executor.submit(submit_textract_job, textract_client, model_config, doc_key): doc_key 
-                for doc_key in uncached_keys
-            }
-            
-            # Collect job submission results
-            for future in as_completed(future_to_doc):
-                job_info = future.result()
-                job_infos.append(job_info)
-        
-        # Sort job_infos to maintain original order
-        doc_key_to_job_info = {info['doc_key']: info for info in job_infos}
-        ordered_job_infos = [doc_key_to_job_info[doc_key] for doc_key in uncached_keys]
-        
-        successful_jobs = [info for info in ordered_job_infos if info['status'] == 'SUBMITTED']
-        _log.info("Successfully submitted %d/%d jobs", len(successful_jobs), len(uncached_keys))
-        
-        # Phase 2: Wait for all jobs to complete in parallel
-        _log.info("Phase 2: Waiting for job completion...")
+        _log.info("Starting AWS Textract Jobs with batch processing (max 10 jobs at a time)")
+        batch_size = 25
         job_results = []
-        
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            # Submit monitoring tasks for all jobs
-            future_to_job = {
-                executor.submit(wait_for_job_completion, textract_client, job_info): job_info 
-                for job_info in ordered_job_infos
-            }
-            
-            # Collect results as they complete
-            completed_count = 0
-            for future in as_completed(future_to_job):
-                result = future.result()
-                job_results.append(result)
-                completed_count += 1
-                
-                if completed_count % 10 == 0 or completed_count == len(uncached_keys):
-                    _log.info("Completed %d/%d jobs", completed_count, len(uncached_keys))
-        
+        total_jobs = len(uncached_keys)
+        submitted = 0
+        while submitted < total_jobs:
+            current_batch_keys = uncached_keys[submitted:submitted+batch_size]
+            job_infos = []
+            # Submit jobs for current batch
+            for doc_key in current_batch_keys:
+                job_info = submit_textract_job(textract_client, model_config, doc_key)
+                job_infos.append(job_info)
+            _log.info(f"Submitted batch {submitted//batch_size+1}: {len(current_batch_keys)} jobs")
+            # Wait for jobs in current batch
+            batch_results = []
+            for job_info in job_infos:
+                result = wait_for_job_completion(textract_client, job_info)
+                batch_results.append(result)
+            job_results.extend(batch_results)
+            submitted += batch_size
+            _log.info(f"Completed batch {submitted//batch_size}: {min(submitted, total_jobs)}/{total_jobs} jobs")
         # Sort results to maintain original order
         doc_key_to_result = {result['doc_key']: result for result in job_results}
         ordered_results = [doc_key_to_result[doc_key] for doc_key in uncached_keys]
-        
         # Process results and update cache and output array
         successful_count = 0
         failed_count = 0
-        
         for result in ordered_results:
-            # Find the index in the original object_keys list
             original_index = object_keys.index(result['doc_key'])
-            
             if result['status'] == 'SUCCEEDED':
                 textract_outputs[original_index] = result['result']
                 successful_count += 1
-                
-                # Cache successful result
                 if cache:
                     cache.set(result['doc_key'], result['result'])
             else:
                 textract_outputs[original_index] = None
                 failed_count += 1
-                _log.warning("Failed to process document '%s': %s", 
-                            result['doc_key'], result.get('error', 'Unknown error'))
-        
-        _log.info("AWS Textract pipeline completed: %d successful, %d failed", 
-                  successful_count, failed_count)
+                _log.warning("Failed to process document '%s': %s", result['doc_key'], result.get('error', 'Unknown error'))
+        _log.info("AWS Textract pipeline completed: %d successful, %d failed", successful_count, failed_count)
     else:
         _log.info("All documents found in cache, no processing needed")
     
