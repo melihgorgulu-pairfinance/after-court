@@ -1,5 +1,6 @@
 # Custom Files and Folders
 data/
+pipeline_model/
 cache/
 notebooks/
 .vscode

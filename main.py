@@ -1,6 +1,8 @@
 import argparse
 from src.app_logger import logger
 from src.document_parsing.parsing_pipeline import aws_textract_pipeline, get_texts_from_textract_outputs
+from src.preprocessing.preprocessing import preprocessing_pipeline
+from src.document_classification.classification import classify_documents
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog="LadungVa",
@@ -16,13 +18,16 @@ if __name__ == "__main__":
     parsed_outputs = aws_textract_pipeline([args.doc_s3_key])
     extracted_texts: list[str] = get_texts_from_textract_outputs(parsed_outputs)
     print(f"Extracted Texts: {extracted_texts[0]}")
-    
-    # PIPELINE 3: Ladung Va Classification
-    # 3.1) Preprocessing
-    
-    # 1) Read the pdf document
-    # 2) Parse the pdf document using AWS Textract
-    # 3) Module: Ladung Va Classification: Contains: Preprocessing -> Model Prediction
-    # 4) Module: Ladung VA Param Extraction: Contains 3 submodule: 4.1) Slug extraction 
-    # 4.2) Debtor Name Extraction 4.3) Summon Date Extraction
-    
+    # PIPELINE 2: Preprocessing
+    preprocessed_texts = [preprocessing_pipeline(text) for text in extracted_texts]
+    cleaned_texts, texts_with_tags = zip(*preprocessed_texts)
+    print(f"Cleaned Texts: {cleaned_texts[0]}")
+    print(f"Texts with Tags: {texts_with_tags[0]}")
+    # PIPELINE 3: Classification
+    is_ladung = classify_documents(texts_with_tags)
+    print(f"Is Ladung: {is_ladung}")
+    # PIPELINE 4: Information Extraction
+    if is_ladung[0]:
+        logger.info("Proceeding to Information Extraction...")
+    else:
+        logger.info("Document is not a Ladung Va. Stopping further processing.")

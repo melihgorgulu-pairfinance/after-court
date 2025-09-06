@@ -1,5 +1,8 @@
 import re
 
+
+LEGAL_ARTICLE_REGEX = re.compile(r"(?i)(?:§\s*)?802\s*f?\s*Abs\.?\s*1(?!\d)\s*ZPO\b")
+
 EMAIL_REGEX = re.compile(
     r"(?:^|(?<=[^\w@.)]))([\w+-](\.(?!\.))?)*?[\w+-](@|[(<{\[]at[)>}\]])(?:(?:[a-z\\u00a1-\\uffff0-9]-?)*[a-z\\u00a1-\\uffff0-9]+)(?:\.(?:[a-z\\u00a1-\\uffff0-9]-?)*[a-z\\u00a1-\\uffff0-9]+)*(?:\.(?:[a-z\\u00a1-\\uffff]{2,}))",
     flags=re.IGNORECASE | re.UNICODE,
@@ -14,18 +17,16 @@ PHONE_REGEX = re.compile(
     r"((?:^|(?<=[^\w)]))(((\+?[01])|(\+\d{2}))[ .-]?)?(\(?\d{3,4}\)?/?[ .-]?)?(\d{3}[ .-]?\d{4})(\s?(?:ext\.?|[#x-])\s?\d{2,6})?(?:$|(?=\W)))|\+?\d{4,5}[ .-/]\d{6,9}"
 )
 
-CONTAIN_LEGAL_ARTICLE_REGEX = re.compile(
-    r"(?:§\s*)?802\s*f?\s*Abs\.?\s*1(?!\d)\s*ZPO\b",
-    flags=re.IGNORECASE
-)
-
-CONTAIN_BAILIFF_REGEX = re.compile(
-    r"\b(?:ober|haupt)?\s*gerichtsvollzieher(?:in)?\b",
-    flags=re.IGNORECASE
-)
 
 ABGABE_VERMOEGENSAUSKUNFT_REGEX = re.compile(
     r"\babgabe\s+(?:der\s+)?ver(?:mö|oe)gensauskunft\b",
+    flags=re.IGNORECASE
+)
+
+# Regex to match reference identifiers with structure "DR II Number/Number"
+# Examples: DR II 297/25, dr-ii 0469/24, dr_ii 798/25, dr...ii 123/45, dr---ii 999/99
+DR_REFERENCE_REGEX = re.compile(
+    r"\bdr[\s\-_.]+ii[\s\-_.]+\d+/\d+\b",
     flags=re.IGNORECASE
 )
 
