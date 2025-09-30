@@ -31,11 +31,10 @@ if __name__ == "__main__":
     if cleaned_ladung_texts:
         logger.info("Proceeding to Information Extraction...")
         extracted_slugs = [extract_slug_from_text(txt) for txt in cleaned_ladung_texts]
-        print("="*100)
-        print(f"Extracted SLUG: {extracted_slugs}")
+        logger.info(f"Extracted SLUG: {extracted_slugs}")
         extracted_debtor_names = [extract_debtor_names(txt) for txt in cleaned_ladung_texts]
-        print(f"Extracted Debtor Names: {extracted_debtor_names}")
+        logger.info(f"Extracted Debtor Names: {extracted_debtor_names}")
         extracted_dates = [extract_date_from_text(txt)['extracted_date'] for txt in cleaned_ladung_texts]
-        print(f"Extracted Date: {extracted_dates}")
+        logger.info(f"Extracted Date: {extracted_dates}")
     else:
         logger.info("No Ladung Va documents found. Stopping further processing.")
